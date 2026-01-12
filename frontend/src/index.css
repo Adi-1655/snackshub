@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  /* Monochrome Charcoal Palette */
+  --bg-base: #0A0A0A;
+  --bg-component: #161616;
+  --bg-hover: #1F1F1F;
+  --border-color: #262626;
+  --text-primary: #FFFFFF;
+  --text-secondary: #a1a1a6;
+  --text-muted: #71717A;
+  --accent-primary: #FACC15;
+  --accent-hover: #f5c707;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+html, body, #root {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: var(--bg-component);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Skeleton loader */
+.skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: rgb(229 231 235);
+  border-radius: 0.25rem;
+}
+
+.dark .skeleton {
+  background-color: rgb(55 65 81);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
