@@ -19,12 +19,12 @@ const Navbar = () => {
   };
 
   return (
-    <nav 
+    <nav
       className="sticky top-0 z-50 bg-[#161616] border-b border-[#262626]"
       style={{ fontFamily: 'system-ui, -apple-system, Inter, sans-serif' }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-16 md:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <motion.div
@@ -50,7 +50,7 @@ const Navbar = () => {
                   to="/orders"
                   className="text-[#a1a1a6] hover:text-[#FACC15] transition-colors duration-200 font-medium"
                 >
-                  My Orders
+                  {user.role === 'admin' ? 'Pending Orders' : 'My Orders'}
                 </Link>
 
                 {user.role === 'admin' && (
@@ -135,7 +135,7 @@ const Navbar = () => {
                     onClick={() => setIsMenuOpen(false)}
                     className="block py-3 text-[#a1a1a6] hover:text-[#FACC15] transition-colors duration-200 font-medium"
                   >
-                    My Orders
+                    {user.role === 'admin' ? 'Pending Orders' : 'My Orders'}
                   </Link>
 
                   <Link

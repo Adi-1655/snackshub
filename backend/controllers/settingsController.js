@@ -3,81 +3,137 @@ const Settings = require('../models/Settings');
 // @desc    Get settings
 // @route   GET /api/settings
 // @access  Public
-exports.getSettings = async (req, res) => {
-  try {
-    const settings = await Settings.getSettings();
-
-    res.json({
-      success: true,
-      data: settings,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+const getSettings = async (req, res) => {
+    try {
+        const settings = await Settings.findOne();
+        if (settings) {
+            res.json({ success: true, data: settings });
+        } else {
+            // Return default settings if none exist
+            res.json({ success: true, data: { orderingEnabled: true, message: '' } });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
 // @desc    Update settings
 // @route   PUT /api/settings
 // @access  Private/Admin
-exports.updateSettings = async (req, res) => {
-  try {
-    const settings = await Settings.getSettings();
+const updateSettings = async (req, res) => {
+    try {
+        const {
+            orderStartTime,
+            orderEndTime,
+            deliveryCharge,
+            minOrderAmount,
+            isOrderingEnabled,
+            maintenanceMode,
+            maintenanceMessage,
+            isFreeDelivery,
+        } = req.body;
 
-    Object.keys(req.body).forEach((key) => {
-      if (settings[key] !== undefined) {
-        settings[key] = req.body[key];
-      }
-    });
+        let settings = await Settings.findOne();
 
-    await settings.save();
+        if (settings) {
+            settings.orderStartTime = orderStartTime || settings.orderStartTime;
+            settings.orderEndTime = orderEndTime || settings.orderEndTime;
+            settings.deliveryCharge = deliveryCharge !== undefined ? deliveryCharge : settings.deliveryCharge;
+            settings.minOrderAmount = minOrderAmount !== undefined ? minOrderAmount : settings.minOrderAmount;
+            settings.isOrderingEnabled = isOrderingEnabled !== undefined ? isOrderingEnabled : settings.isOrderingEnabled;
+            settings.maintenanceMode = maintenanceMode !== undefined ? maintenanceMode : settings.maintenanceMode;
+            settings.maintenanceMessage = maintenanceMessage || settings.maintenanceMessage;
+            settings.isFreeDelivery = isFreeDelivery !== undefined ? isFreeDelivery : settings.isFreeDelivery;
 
-    res.json({
-      success: true,
-      data: settings,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
+            const updatedSettings = await settings.save();
+            res.json({ success: true, data: updatedSettings });
+        } else {
+            settings = new Settings({
+                orderStartTime,
+                orderEndTime,
+                deliveryCharge,
+                minOrderAmount,
+                isOrderingEnabled,
+                maintenanceMode,
+                maintenanceMessage,
+                isFreeDelivery,
+            });
+            const createdSettings = await settings.save();
+            res.json({ success: true, data: createdSettings });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
-// @desc    Check if ordering is allowed
+// @desc    Check ordering status
 // @route   GET /api/settings/check-ordering
 // @access  Public
-exports.checkOrdering = async (req, res) => {
-  try {
-    const settings = await Settings.getSettings();
+const checkOrdering = async (req, res) => {
+    try {
+        const settings = await Settings.findOne();
 
-    const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if (!settings) {
+            return res.json({ success: true, data: { isAllowed: true } });
+        }
 
-    const isAllowed =
-      settings.isOrderingEnabled &&
-      !settings.maintenanceMode &&
-      currentTime >= settings.orderStartTime &&
-      currentTime <= settings.orderEndTime;
+        if (settings.maintenanceMode) {
+            return res.json({
+                success: true,
+                data: { isAllowed: false, message: settings.maintenanceMessage }
+            });
+        }
 
-    res.json({
-      success: true,
-      data: {
-        isAllowed,
-        currentTime,
-        orderStartTime: settings.orderStartTime,
-        orderEndTime: settings.orderEndTime,
-        isOrderingEnabled: settings.isOrderingEnabled,
-        maintenanceMode: settings.maintenanceMode,
-        maintenanceMessage: settings.maintenanceMessage,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+        if (!settings.isOrderingEnabled) {
+            return res.json({
+                success: true,
+                data: { isAllowed: false, message: 'Ordering is currently disabled.' }
+            });
+        }
+
+        // Check time window
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+
+        const [startHour, startMinute] = settings.orderStartTime.split(':').map(Number);
+        const startTime = startHour * 60 + startMinute;
+
+        const [endHour, endMinute] = settings.orderEndTime.split(':').map(Number);
+        const endTime = endHour * 60 + endMinute;
+
+        let isWithinTime;
+        if (startTime <= endTime) {
+            // Standard window (e.g., 09:00 to 17:00)
+            isWithinTime = currentTime >= startTime && currentTime <= endTime;
+        } else {
+            // Crossing midnight (e.g., 20:00 to 02:00)
+            isWithinTime = currentTime >= startTime || currentTime <= endTime;
+        }
+
+        if (!isWithinTime) {
+            return res.json({
+                success: true,
+                data: {
+                    isAllowed: false,
+                    message: `Ordering is only available between ${settings.orderStartTime} and ${settings.orderEndTime}.`
+                }
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { isAllowed: true, message: '' }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+module.exports = {
+    getSettings,
+    updateSettings,
+    checkOrdering
 };

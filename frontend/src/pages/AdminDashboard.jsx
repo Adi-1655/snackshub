@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   FiDollarSign,
@@ -14,21 +15,98 @@ import {
   FiFileText,
   FiDownload,
 } from 'react-icons/fi';
-import { adminAPI, productAPI, settingsAPI } from '../utils/api';
+import { adminAPI, productAPI, settingsAPI, getImageUrl } from '../utils/api';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
+import { useApp } from '../context/AppContext';
+
+const TimePicker = ({ label, value, onChange }) => {
+  const [hour, setHour] = useState('12');
+  const [minute, setMinute] = useState('00');
+  const [period, setPeriod] = useState('AM');
+
+  useEffect(() => {
+    if (value) {
+      const [h, m] = value.split(':');
+      let hNum = parseInt(h);
+      const p = hNum >= 12 ? 'PM' : 'AM';
+      hNum = hNum % 12 || 12;
+      setHour(hNum.toString().padStart(2, '0'));
+      setMinute(m);
+      setPeriod(p);
+    }
+  }, [value]);
+
+  const handleChange = (type, val) => {
+    let newH = type === 'hour' ? val : hour;
+    let newM = type === 'minute' ? val : minute;
+    let newP = type === 'period' ? val : period;
+
+    if (type === 'hour') setHour(val);
+    else if (type === 'minute') setMinute(val);
+    else if (type === 'period') setPeriod(val);
+
+    let h = parseInt(newH);
+    if (newP === 'PM' && h !== 12) h += 12;
+    if (newP === 'AM' && h === 12) h = 0;
+    const timeString = `${h.toString().padStart(2, '0')}:${newM}`;
+    onChange(timeString);
+  };
+
+  const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-[#a1a1a6] mb-2">{label}</label>
+      <div className="flex gap-2">
+        <select
+          value={hour}
+          onChange={(e) => handleChange('hour', e.target.value)}
+          className="flex-1 px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+        >
+          {hours.map((h) => (
+            <option key={h} value={h}>{h}</option>
+          ))}
+        </select>
+        <span className="text-white self-center">:</span>
+        <select
+          value={minute}
+          onChange={(e) => handleChange('minute', e.target.value)}
+          className="flex-1 px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+        >
+          {minutes.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <select
+          value={period}
+          onChange={(e) => handleChange('period', e.target.value)}
+          className="flex-1 px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
+  const { fetchSettings: refreshGlobalSettings } = useApp();
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard');
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [reportRange, setReportRange] = useState('daily');
   const [reportData, setReportData] = useState(null);
+  const [isNewCategory, setIsNewCategory] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All');
   const [formData, setFormData] = useState({
     name: '',
     category: 'Chips',
@@ -89,6 +167,8 @@ const AdminDashboard = () => {
       await settingsAPI.update(newSettings);
       toast.success('Settings updated');
       fetchData();
+      refreshGlobalSettings();
+      setActiveTab('dashboard');
     } catch (error) {
       toast.error('Failed to update settings');
     }
@@ -169,7 +249,7 @@ const AdminDashboard = () => {
     }
 
     const timestamp = new Date().toLocaleString().replace(/[/:]/g, '-');
-    
+
     if (format === 'csv') {
       const csvContent = generateCSVContent();
       const element = document.createElement('a');
@@ -213,6 +293,26 @@ const AdminDashboard = () => {
     return csvRows.join('\n');
   };
 
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const response = await adminAPI.uploadImage(file);
+      if (response.data.success) {
+        setFormData({ ...formData, image: response.data.imageUrl });
+        toast.success('Image uploaded successfully');
+      }
+    } catch (error) {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A]">
@@ -238,11 +338,10 @@ const AdminDashboard = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-lg font-medium capitalize transition-all whitespace-nowrap ${
-                activeTab === tab
-                  ? 'bg-[#FACC15] text-black'
-                  : 'bg-[#161616] border border-[#262626] text-[#a1a1a6] hover:border-[#FACC15] hover:text-[#FACC15]'
-              }`}
+              className={`px-6 py-2 rounded-lg font-medium capitalize transition-all whitespace-nowrap ${activeTab === tab
+                ? 'bg-[#FACC15] text-black'
+                : 'bg-[#161616] border border-[#262626] text-[#a1a1a6] hover:border-[#FACC15] hover:text-[#FACC15]'
+                }`}
             >
               {tab}
             </button>
@@ -281,83 +380,89 @@ const AdminDashboard = () => {
               />
             </div>
 
-            <div className="bg-[#161616] border border-[#262626] rounded-xl p-6 hover:bg-[#1F1F1F] transition-all">
-              <h2 className="text-xl font-bold text-white mb-4">
-                Ordering Hours
-              </h2>
-              <div className="flex items-center gap-4">
-                <FiClock className="text-3xl text-[#FACC15]" />
-                <div>
-                  <p className="text-lg font-semibold text-white">
-                    {stats.orderingWindow.start} - {stats.orderingWindow.end}
-                  </p>
-                  <p className="text-sm text-[#a1a1a6]">
-                    Current ordering window
-                  </p>
-                </div>
-              </div>
-            </div>
+
           </div>
         )}
 
         {/* Orders Tab */}
         {activeTab === 'orders' && (
-          <div className="bg-[#161616] border border-[#262626] rounded-xl shadow-md overflow-hidden hover:bg-[#1F1F1F] transition-all">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#0A0A0A]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Order ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {orders.map((order) => (
-                    <tr key={order._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        #{order._id.slice(-8)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                        {order.user?.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#FACC15]">
-                        ₹{order.totalAmount}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400">
-                          {order.orderStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <select
-                          value={order.orderStatus}
-                          onChange={(e) => updateOrderStatus(order._id, e.target.value)}
-                          className="px-3 py-1 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
-                        >
-                          <option>Pending</option>
-                          <option>Confirmed</option>
-                          <option>Preparing</option>
-                          <option>Out for Delivery</option>
-                          <option>Delivered</option>
-                        </select>
-                      </td>
+          <div>
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+              {['All', 'Pending', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors border border-[#262626] ${statusFilter === status
+                    ? 'bg-[#FACC15] text-black border-[#FACC15]'
+                    : 'bg-[#161616] text-[#a1a1a6] hover:bg-[#1F1F1F] hover:text-white'
+                    }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+
+            <div className="bg-[#161616] border border-[#262626] rounded-xl shadow-md overflow-hidden hover:bg-[#1F1F1F] transition-all">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-[#0A0A0A]">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Order ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {orders
+                      .filter((order) => statusFilter === 'All' || order.orderStatus === statusFilter)
+                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                      .map((order) => (
+                        <tr key={order._id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                            #{order._id.slice(-8)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                            {order.user?.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#FACC15]">
+                            ₹{order.totalAmount}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400">
+                              {order.orderStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <select
+                              value={order.orderStatus}
+                              onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                              className="px-3 py-1 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+                            >
+                              <option>Pending</option>
+                              <option>Confirmed</option>
+                              <option>Preparing</option>
+                              <option>Out for Delivery</option>
+                              <option>Delivered</option>
+                              <option>Cancelled</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -378,7 +483,7 @@ const AdminDashboard = () => {
                   className="bg-[#161616] border border-[#262626] rounded-xl p-4 hover:bg-[#1F1F1F] transition-all"
                 >
                   <img
-                    src={product.image}
+                    src={getImageUrl(product.image)}
                     alt={product.name}
                     className="w-full h-32 object-cover rounded-lg mb-3"
                   />
@@ -387,9 +492,8 @@ const AdminDashboard = () => {
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-lg font-bold text-[#FACC15]">₹{product.price}</span>
                     <span
-                      className={`text-sm ${
-                        product.stock <= 5 ? 'text-red-400' : 'text-green-400'
-                      }`}
+                      className={`text-sm ${product.stock <= 5 ? 'text-red-400' : 'text-green-400'
+                        }`}
                     >
                       Stock: {product.stock}
                     </span>
@@ -420,38 +524,122 @@ const AdminDashboard = () => {
             <h2 className="text-xl font-bold text-white mb-6">
               System Settings
             </h2>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <TimePicker
+                  label="Order Start Time"
+                  value={settings.orderStartTime}
+                  onChange={(val) => setSettings({ ...settings, orderStartTime: val })}
+                />
+                <TimePicker
+                  label="Order End Time"
+                  value={settings.orderEndTime}
+                  onChange={(val) => setSettings({ ...settings, orderEndTime: val })}
+                />
+
                 <div>
                   <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
-                    Order Start Time
+                    Delivery Type
                   </label>
-                  <input
-                    type="time"
-                    value={settings.orderStartTime}
-                    onChange={(e) =>
-                      setSettings({ ...settings, orderStartTime: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
-                  />
+                  <div className="flex gap-4 mb-4">
+                    <button
+                      onClick={() => setSettings({ ...settings, isFreeDelivery: true })}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors border border-[#262626] ${settings.isFreeDelivery
+                        ? 'bg-[#FACC15] text-black border-[#FACC15]'
+                        : 'bg-[#0A0A0A] text-white hover:bg-[#1F1F1F]'
+                        }`}
+                    >
+                      Free Delivery
+                    </button>
+                    <button
+                      onClick={() => setSettings({ ...settings, isFreeDelivery: false })}
+                      className={`px-4 py-2 rounded-lg font-medium transition-colors border border-[#262626] ${!settings.isFreeDelivery
+                        ? 'bg-[#FACC15] text-black border-[#FACC15]'
+                        : 'bg-[#0A0A0A] text-white hover:bg-[#1F1F1F]'
+                        }`}
+                    >
+                      Custom Charge
+                    </button>
+                  </div>
+
+                  {!settings.isFreeDelivery && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                      <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
+                        Delivery Charge (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.deliveryCharge}
+                        onChange={(e) => setSettings({ ...settings, deliveryCharge: parseInt(e.target.value) })}
+                        className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15] mb-4"
+                      />
+                    </motion.div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
-                    Order End Time
+                    Min Order Amount (₹)
                   </label>
                   <input
-                    type="time"
-                    value={settings.orderEndTime}
-                    onChange={(e) =>
-                      setSettings({ ...settings, orderEndTime: e.target.value })
-                    }
+                    type="number"
+                    value={settings.minOrderAmount}
+                    onChange={(e) => setSettings({ ...settings, minOrderAmount: parseInt(e.target.value) })}
                     className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
                   />
                 </div>
               </div>
+
+              <div className="space-y-4 pt-4 border-t border-[#262626]">
+                <div className="flex items-center justify-between p-4 bg-[#0A0A0A] rounded-lg border border-[#262626]">
+                  <div>
+                    <h3 className="font-medium text-white">Enable Ordering</h3>
+                    <p className="text-sm text-[#a1a1a6]">Allow customers to place orders</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.isOrderingEnabled}
+                      onChange={(e) => setSettings({ ...settings, isOrderingEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FACC15]"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-[#0A0A0A] rounded-lg border border-[#262626]">
+                  <div>
+                    <h3 className="font-medium text-white">Maintenance Mode</h3>
+                    <p className="text-sm text-[#a1a1a6]">Disable entire site access</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.maintenanceMode}
+                      onChange={(e) => setSettings({ ...settings, maintenanceMode: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FACC15]"></div>
+                  </label>
+                </div>
+
+                {settings.maintenanceMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
+                      Maintenance Message
+                    </label>
+                    <textarea
+                      value={settings.maintenanceMessage}
+                      onChange={(e) => setSettings({ ...settings, maintenanceMessage: e.target.value })}
+                      className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+                      rows="2"
+                    />
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => updateSettings(settings)}
-                className="w-full py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-colors"
+                className="w-full py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-colors mt-6"
               >
                 Save Settings
               </button>
@@ -468,11 +656,10 @@ const AdminDashboard = () => {
                   <button
                     key={range}
                     onClick={() => setReportRange(range)}
-                    className={`px-6 py-2 rounded-lg font-medium capitalize transition-all ${
-                      reportRange === range
-                        ? 'bg-[#FACC15] text-black'
-                        : 'bg-[#161616] border border-[#262626] text-[#a1a1a6] hover:border-[#FACC15] hover:text-[#FACC15]'
-                    }`}
+                    className={`px-6 py-2 rounded-lg font-medium capitalize transition-all ${reportRange === range
+                      ? 'bg-[#FACC15] text-black'
+                      : 'bg-[#161616] border border-[#262626] text-[#a1a1a6] hover:border-[#FACC15] hover:text-[#FACC15]'
+                      }`}
                   >
                     {range}
                   </button>
@@ -628,20 +815,40 @@ const AdminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
+                  <label className="block text-sm font-medium text-[#a1a1a6] mb-2 flex justify-between">
                     Category
+                    <button
+                      onClick={() => {
+                        setIsNewCategory(!isNewCategory);
+                        setFormData({ ...formData, category: '' });
+                      }}
+                      className="text-[#FACC15] text-xs hover:underline"
+                    >
+                      {isNewCategory ? 'Select Existing' : 'Add New'}
+                    </button>
                   </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
-                  >
-                    <option>Chips</option>
-                    <option>Biscuits</option>
-                    <option>Chocolates</option>
-                    <option>Cold Drinks</option>
-                    <option>Instant Noodles</option>
-                  </select>
+                  {isNewCategory ? (
+                    <input
+                      type="text"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+                      placeholder="Enter new category"
+                    />
+                  ) : (
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+                    >
+                      <option value="">Select Category</option>
+                      <option>Chips</option>
+                      <option>Biscuits</option>
+                      <option>Chocolates</option>
+                      <option>Cold Drinks</option>
+                      <option>Instant Noodles</option>
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -695,6 +902,31 @@ const AdminDashboard = () => {
                     }
                     className="w-full px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
+                    Product Image
+                  </label>
+                  <div className="flex items-start gap-4">
+                    {formData.image && (
+                      <img
+                        src={getImageUrl(formData.image)}
+                        alt="Preview"
+                        className="w-20 h-20 object-cover rounded-lg border border-[#262626]"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="w-full text-sm text-[#a1a1a6] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#FACC15] file:text-black hover:file:bg-[#f5c707]"
+                      />
+                      {uploading && (
+                        <p className="text-xs text-[#FACC15] mt-1">Uploading...</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

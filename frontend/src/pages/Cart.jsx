@@ -48,42 +48,45 @@ const Cart = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="bg-[#161616] border border-[#262626] rounded-xl p-4 flex gap-4 hover:bg-[#1F1F1F] transition-all"
+              className="bg-[#161616] border border-[#262626] rounded-xl p-4 flex flex-col sm:flex-row gap-4 hover:bg-[#1F1F1F] transition-all"
             >
-              <img
-                src={item.image || '/placeholder-product.jpg'}
-                alt={item.name}
-                className="w-24 h-24 object-cover rounded-lg"
-              />
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-white">{item.name}</h3>
-                <p className="text-sm text-[#a1a1a6]">{item.category}</p>
-                <p className="text-lg font-bold text-[#FACC15] mt-2">
-                  ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
-                </p>
+              <div className="flex gap-4 flex-1">
+                <img
+                  src={item.image || '/placeholder-product.jpg'}
+                  alt={item.name}
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg"
+                />
+                <div className="flex-1">
+                  <h3 className="font-bold text-base sm:text-lg text-white">{item.name}</h3>
+                  <p className="text-xs sm:text-sm text-[#a1a1a6]">{item.category}</p>
+                  <p className="text-base sm:text-lg font-bold text-[#FACC15] mt-1 sm:mt-2">
+                    ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col items-end justify-between">
-                <button
-                  onClick={() => removeFromCart(item._id)}
-                  className="text-red-500 hover:text-red-400 transition-colors"
-                >
-                  <FiTrash2 className="text-xl" />
-                </button>
+
+              <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-0 border-[#262626] pt-3 sm:pt-0">
                 <div className="flex items-center gap-2 bg-[#262626] rounded-lg p-1">
                   <button
                     onClick={() => updateCartQuantity(item._id, item.quantity - 1)}
-                    className="p-2 hover:bg-[#1F1F1F] rounded transition-colors text-[#a1a1a6]"
+                    className="p-1 sm:p-2 hover:bg-[#1F1F1F] rounded transition-colors text-[#a1a1a6]"
                   >
-                    <FiMinus />
+                    <FiMinus size={14} />
                   </button>
-                  <span className="font-bold w-8 text-center text-white">{item.quantity}</span>
+                  <span className="font-bold w-6 sm:w-8 text-center text-white text-sm sm:text-base">{item.quantity}</span>
                   <button
                     onClick={() => updateCartQuantity(item._id, item.quantity + 1)}
-                    className="p-2 hover:bg-[#1F1F1F] rounded transition-colors text-[#a1a1a6]"
+                    className="p-1 sm:p-2 hover:bg-[#1F1F1F] rounded transition-colors text-[#a1a1a6]"
                   >
-                    <FiPlus />
+                    <FiPlus size={14} />
                   </button>
                 </div>
+                <button
+                  onClick={() => removeFromCart(item._id)}
+                  className="text-red-500 hover:text-red-400 transition-colors p-2"
+                >
+                  <FiTrash2 className="text-lg sm:text-xl" />
+                </button>
               </div>
             </motion.div>
           ))}
@@ -94,16 +97,16 @@ const Cart = () => {
             <span className="text-lg font-semibold text-white">Total Amount:</span>
             <span className="text-2xl font-bold text-[#FACC15]">₹{total}</span>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <button
               onClick={clearCart}
-              className="flex-1 py-3 border-2 border-[#262626] text-[#a1a1a6] rounded-lg font-semibold hover:border-[#FACC15] hover:text-[#FACC15] transition-colors"
+              className="w-full sm:flex-1 py-3 border-2 border-[#262626] text-[#a1a1a6] rounded-lg font-semibold hover:border-[#FACC15] hover:text-[#FACC15] transition-colors order-2 sm:order-1"
             >
               Clear Cart
             </button>
             <button
               onClick={() => navigate('/checkout')}
-              className="flex-1 py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-all flex items-center justify-center gap-2"
+              className="w-full sm:flex-1 py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-all flex items-center justify-center gap-2 order-1 sm:order-2"
             >
               <FiShoppingBag />
               Proceed to Checkout

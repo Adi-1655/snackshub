@@ -233,11 +233,21 @@ const seedDatabase = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('📦 Connected to MongoDB...');
 
-    // Clear existing data
-    await User.deleteMany();
-    await Product.deleteMany();
-    await Settings.deleteMany();
-    console.log('🗑️  Cleared existing data...');
+    // Check for force flag to prevent accidental deletion
+    if (process.argv.includes('--force') || process.env.SEED_FORCE === 'true') {
+      // Clear existing data
+      await User.deleteMany();
+      await Product.deleteMany();
+      await Settings.deleteMany();
+      console.log('🗑️  Cleared existing data...');
+    } else {
+      console.log('ℹ️  Skipping data clearance. Use --force to wipe database.');
+      console.log('ℹ️  Appending new data only if duplicates are handled...');
+      // For now, we will just exit if not forced, to be safe, or we could upsert.
+      // Let's just return to prevent duplicates if we are not wiping.
+      console.log('⚠️  Operation cancelled to protect data. Run with --force to overwrite.');
+      process.exit(0);
+    }
 
     // Insert users
     await User.create(users);

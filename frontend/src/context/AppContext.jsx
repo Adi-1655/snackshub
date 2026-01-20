@@ -17,6 +17,7 @@ export const AppProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [settings, setSettings] = useState(null);
   const [isOrderingAllowed, setIsOrderingAllowed] = useState(false);
+  const [orderingMessage, setOrderingMessage] = useState('');
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
@@ -59,6 +60,7 @@ export const AppProvider = ({ children }) => {
     try {
       const { data } = await settingsAPI.checkOrdering();
       setIsOrderingAllowed(data.data.isAllowed);
+      setOrderingMessage(data.data.message || '');
     } catch (error) {
       console.error('Failed to check ordering time:', error);
     }
@@ -146,6 +148,7 @@ export const AppProvider = ({ children }) => {
     products,
     settings,
     isOrderingAllowed,
+    orderingMessage,
     darkMode,
     addToCart,
     removeFromCart,

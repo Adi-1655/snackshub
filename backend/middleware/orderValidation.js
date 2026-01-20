@@ -23,17 +23,28 @@ exports.checkOrderingTime = async (req, res, next) => {
       });
     }
 
-    // Current time in HH:MM
+    // Current time in minutes
     const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(
-      now.getMinutes()
-    ).padStart(2, '0')}`;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Time window validation
-    if (
-      currentTime < settings.orderStartTime ||
-      currentTime > settings.orderEndTime
-    ) {
+    // Parse start and end times
+    const [startHour, startMinute] = settings.orderStartTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+
+    const [endHour, endMinute] = settings.orderEndTime.split(':').map(Number);
+    const endMinutes = endHour * 60 + endMinute;
+
+    // Check if within window
+    let isWithinTime;
+    if (startMinutes <= endMinutes) {
+      // Standard window (e.g., 09:00 to 17:00)
+      isWithinTime = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    } else {
+      // Midnight crossing (e.g., 20:00 to 01:30)
+      isWithinTime = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+    }
+
+    if (!isWithinTime) {
       return res.status(403).json({
         success: false,
         message: `Ordering is only available between ${settings.orderStartTime} and ${settings.orderEndTime}`,

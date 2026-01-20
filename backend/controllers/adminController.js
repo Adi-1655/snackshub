@@ -1,328 +1,193 @@
-const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Product = require('../models/Product');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
-const AdminLog = require('../models/AdminLog');
 
 // @desc    Get dashboard stats
 // @route   GET /api/admin/stats
 // @access  Private/Admin
-exports.getDashboardStats = async (req, res) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+const getDashboardStats = async (req, res) => {
+    try {
+        const orders = await Order.countDocuments();
+        const products = await Product.countDocuments();
+        const users = await User.countDocuments();
+        const totalSales = await Order.aggregate([
+            { $group: { _id: null, total: { $sum: '$totalPrice' } } },
+        ]);
 
-    const [
-      totalOrders,
-      todayOrders,
-      totalRevenue,
-      todayRevenue,
-      pendingOrders,
-      lowStockProducts,
-      totalUsers,
-      totalProducts,
-    ] = await Promise.all([
-      Order.countDocuments({ orderStatus: 'Delivered' }),
-      Order.countDocuments({ createdAt: { $gte: today }, orderStatus: 'Delivered' }),
-      Order.aggregate([
-        { $match: { orderStatus: 'Delivered' } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-      ]),
-      Order.aggregate([
-        { $match: { createdAt: { $gte: today }, orderStatus: 'Delivered' } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-      ]),
-      Order.countDocuments({ orderStatus: { $in: ['Pending', 'Confirmed'] } }),
-      Product.countDocuments({ stock: { $lte: 5, $gt: 0 } }),
-      User.countDocuments({ role: 'user' }),
-      Product.countDocuments(),
-    ]);
+        const settings = await Settings.findOne();
 
-    const settings = await Settings.getSettings();
 
-    res.json({
-      success: true,
-      data: {
-        totalOrders,
-        todayOrders,
-        totalRevenue: totalRevenue[0]?.total || 0,
-        todayRevenue: todayRevenue[0]?.total || 0,
-        pendingOrders,
-        lowStockProducts,
-        totalUsers,
-        totalProducts,
-        orderingWindow: {
-          start: settings.orderStartTime,
-          end: settings.orderEndTime,
-        },
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+        res.json({
+            success: true,
+            data: {
+                totalOrders: orders,
+                products,
+                users,
+                totalRevenue: totalSales[0] ? totalSales[0].total : 0,
+
+                lowStockProducts: await Product.countDocuments({
+                    $or: [
+                        { stock: { $lte: 5 } },
+                        { countInStock: { $lte: 5 } }
+                    ]
+                }),
+                todayOrders: await Order.countDocuments({ createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }),
+                todayRevenue: (await Order.aggregate([
+                    { $match: { createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } } },
+                    { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+                ]))[0]?.total || 0,
+                pendingOrders: await Order.countDocuments({
+                    status: { $regex: /^pending$/i } // Case insensitive
+                }),
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
-// @desc    Get all orders (admin)
+// @desc    Get all orders
 // @route   GET /api/admin/orders
 // @access  Private/Admin
-exports.getAllOrders = async (req, res) => {
-  try {
-    const { status, limit = 50 } = req.query;
-
-    let filter = {};
-    if (status) filter.orderStatus = status;
-
-    const orders = await Order.find(filter)
-      .populate('user', 'name phone hostelName roomNumber')
-      .populate('orderItems.product', 'name category')
-      .sort('-createdAt')
-      .limit(parseInt(limit));
-
-    res.json({
-      success: true,
-      count: orders.length,
-      data: orders,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+const getAllOrders = async (req, res) => {
+    try {
+        const orders = await Order.find({}).populate('user', 'id name');
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
 // @desc    Update order status
 // @route   PUT /api/admin/orders/:id/status
 // @access  Private/Admin
-exports.updateOrderStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
+const updateOrderStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        const order = await Order.findById(req.params.id);
 
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+        if (order) {
+            order.orderStatus = status;
+            const updatedOrder = await order.save();
+            res.json({ success: true, data: updatedOrder });
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
-
-    order.orderStatus = status;
-
-    if (status === 'Delivered') {
-      order.deliveredAt = new Date();
-      order.paymentStatus = 'Paid';
-    }
-
-    await order.save();
-
-    // Log admin action
-    await AdminLog.create({
-      admin: req.user._id,
-      action: 'UPDATE_ORDER_STATUS',
-      description: `Updated order ${order._id} status to ${status}`,
-      metadata: { orderId: order._id, newStatus: status },
-    });
-
-    res.json({
-      success: true,
-      data: order,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
 };
 
-// @desc    Create product
+// @desc    Create a product
 // @route   POST /api/admin/products
 // @access  Private/Admin
-exports.createProduct = async (req, res) => {
-  try {
-    const product = await Product.create(req.body);
+const createProduct = async (req, res) => {
+    try {
+        const { name, price, image, brand, category, countInStock, stock, numReviews, description, maxQuantityPerOrder } = req.body;
 
-    await AdminLog.create({
-      admin: req.user._id,
-      action: 'CREATE_PRODUCT',
-      description: `Created product: ${product.name}`,
-      metadata: { productId: product._id },
-    });
+        const product = new Product({
+            name,
+            price,
+            user: req.user._id,
+            image,
+            brand,
+            category,
+            stock: stock || countInStock || 0,
+            numReviews: 0,
+            description,
+            maxQuantityPerOrder: maxQuantityPerOrder || 5
+        });
 
-    res.status(201).json({
-      success: true,
-      data: product,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
+        const createdProduct = await product.save();
+        res.status(201).json({ success: true, data: createdProduct });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
-// @desc    Update product
+// @desc    Update a product
 // @route   PUT /api/admin/products/:id
 // @access  Private/Admin
-exports.updateProduct = async (req, res) => {
-  try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+const updateProduct = async (req, res) => {
+    try {
+        const { name, price, description, image, brand, category, stock, maxQuantityPerOrder, isAvailable } = req.body;
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+        const product = await Product.findById(req.params.id);
+
+        if (product) {
+            product.name = name || product.name;
+            product.price = price !== undefined ? price : product.price;
+            product.description = description || product.description;
+            product.image = image || product.image;
+            product.brand = brand || product.brand;
+            product.category = category || product.category;
+            product.stock = stock !== undefined ? stock : product.stock;
+            product.maxQuantityPerOrder = maxQuantityPerOrder !== undefined ? maxQuantityPerOrder : product.maxQuantityPerOrder;
+            product.isAvailable = isAvailable !== undefined ? isAvailable : product.isAvailable;
+
+            const updatedProduct = await product.save();
+            res.json({ success: true, data: updatedProduct });
+        } else {
+            res.status(404).json({ message: 'Product not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
-
-    await AdminLog.create({
-      admin: req.user._id,
-      action: 'UPDATE_PRODUCT',
-      description: `Updated product: ${product.name}`,
-      metadata: { productId: product._id },
-    });
-
-    res.json({
-      success: true,
-      data: product,
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
 };
 
-// @desc    Delete product
+// @desc    Delete a product
 // @route   DELETE /api/admin/products/:id
 // @access  Private/Admin
-exports.deleteProduct = async (req, res) => {
-  try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+const deleteProduct = async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
+        if (product) {
+            await product.deleteOne();
+            res.json({ message: 'Product removed' });
+        } else {
+            res.status(404).json({ message: 'Product not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
-
-    await AdminLog.create({
-      admin: req.user._id,
-      action: 'DELETE_PRODUCT',
-      description: `Deleted product: ${product.name}`,
-      metadata: { productId: product._id },
-    });
-
-    res.json({
-      success: true,
-      message: 'Product deleted successfully',
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
 };
 
 // @desc    Get low stock products
 // @route   GET /api/admin/products/low-stock
 // @access  Private/Admin
-exports.getLowStockProducts = async (req, res) => {
-  try {
-    const products = await Product.find({ stock: { $lte: 5, $gt: 0 } }).sort('stock');
-
-    res.json({
-      success: true,
-      count: products.length,
-      data: products,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+const getLowStockProducts = async (req, res) => {
+    try {
+        const products = await Product.find({ stock: { $lte: 5 } });
+        res.json({ success: true, data: products });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
 };
 
 // @desc    Get sales report
 // @route   GET /api/admin/sales-report/:range
 // @access  Private/Admin
-exports.getSalesReport = async (req, res) => {
-  try {
-    const { range } = req.params;
-    let matchStage = { orderStatus: 'Delivered' }; // Only count delivered orders
+const getSalesReport = async (req, res) => {
+    // Basic stub
+    res.json({ message: 'Sales report endpoint' });
+};
 
-    const now = new Date();
-
-    if (range === 'daily') {
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      matchStage.createdAt = { $gte: startOfDay };
-    } else if (range === 'weekly') {
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      startOfWeek.setHours(0, 0, 0, 0);
-      matchStage.createdAt = { $gte: startOfWeek };
-    } else if (range === 'monthly') {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      matchStage.createdAt = { $gte: startOfMonth };
-    } else if (range === 'yearly') {
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      matchStage.createdAt = { $gte: startOfYear };
-    }
-
-    const [orderStats, topProducts] = await Promise.all([
-      Order.aggregate([
-        { $match: matchStage },
-        {
-          $group: {
-            _id: null,
-            totalOrders: { $sum: 1 },
-            totalRevenue: { $sum: '$totalAmount' },
-            avgOrderValue: { $avg: '$totalAmount' },
-          },
-        },
-      ]),
-      Order.aggregate([
-        { $match: matchStage },
-        { $unwind: '$orderItems' },
-        {
-          $group: {
-            _id: '$orderItems.product',
-            totalQuantity: { $sum: '$orderItems.quantity' },
-            totalRevenue: { $sum: { $multiply: ['$orderItems.price', '$orderItems.quantity'] } },
-          },
-        },
-        { $sort: { totalRevenue: -1 } },
-        { $limit: 5 },
-      ]),
-    ]);
-
-    const userStats = await User.countDocuments();
-
-    res.json({
-      success: true,
-      data: {
-        totalOrders: orderStats[0]?.totalOrders || 0,
-        totalRevenue: Math.round(orderStats[0]?.totalRevenue || 0),
-        avgOrderValue: Math.round(orderStats[0]?.avgOrderValue || 0),
-        totalCustomers: userStats,
-        topProducts,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+module.exports = {
+    getDashboardStats,
+    getAllOrders,
+    updateOrderStatus,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    getLowStockProducts,
+    getSalesReport,
 };

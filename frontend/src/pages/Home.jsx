@@ -2,23 +2,37 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiFilter, FiAlertCircle } from 'react-icons/fi';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { productAPI } from '../utils/api';
 import Navbar from '../components/Navbar';
 import ProductCard from '../components/ProductCard';
 import SkeletonCard from '../components/SkeletonCard';
 
 const Home = () => {
-  const { products, fetchProducts, settings, isOrderingAllowed, checkOrderingTime } = useApp();
+  const { products, fetchProducts, settings, isOrderingAllowed, orderingMessage, checkOrderingTime } = useApp();
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [categories, setCategories] = useState(['All']);
   const [loading, setLoading] = useState(true);
-
-  const categories = ['All', 'Chips', 'Biscuits', 'Chocolates', 'Cold Drinks', 'Instant Noodles'];
 
   useEffect(() => {
     loadProducts();
+    fetchCategories();
     checkOrderingTime();
     const interval = setInterval(checkOrderingTime, 60000); // Check every minute
     return () => clearInterval(interval);
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await productAPI.getCategories();
+      if (response.data.success) {
+        setCategories(['All', ...response.data.data]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
 
   const loadProducts = async () => {
     setLoading(true);
@@ -30,6 +44,11 @@ const Home = () => {
     selectedCategory === 'All'
       ? products
       : products.filter((p) => p.category === selectedCategory);
+
+  // Sort by stock for admins
+  if (user?.role === 'admin') {
+    filteredProducts.sort((a, b) => a.stock - b.stock);
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
@@ -49,8 +68,7 @@ const Home = () => {
                 Ordering Currently Closed
               </h3>
               <p className="text-sm text-[#a1a1a6] mt-1">
-                Orders are accepted between {settings.orderStartTime} and{' '}
-                {settings.orderEndTime}. You can browse items, but ordering is disabled.
+                {orderingMessage || 'Ordering is currently disabled by the administrator.'}
               </p>
             </div>
           </motion.div>
@@ -76,18 +94,35 @@ const Home = () => {
             <FiFilter className="text-[#a1a1a6]" />
             <h2 className="text-lg font-semibold text-white">Categories</h2>
           </div>
-          <div className="flex flex-wrap gap-3">
+
+          {/* Mobile Category Dropdown */}
+          <div className="md:hidden">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-3 bg-[#161616] border border-[#262626] rounded-lg text-white appearance-none focus:border-[#FACC15] outline-none"
+              style={{ backgroundImage: 'none' }}
+            >
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop Category Buttons */}
+          <div className="hidden md:flex flex-wrap gap-3">
             {categories.map((category) => (
               <motion.button
                 key={category}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-2 rounded-full font-medium transition-all ${
-                  selectedCategory === category
+                className={`px-6 py-2 rounded-full font-medium transition-all ${selectedCategory === category
                   ? 'bg-[#FACC15] text-black shadow-lg shadow-yellow-500/20'
-                    : 'bg-[#161616] text-[#a1a1a6] border border-[#262626] hover:border-[#FACC15] hover:text-[#FACC15]'
-                }`}
+                  : 'bg-[#161616] text-[#a1a1a6] border border-[#262626] hover:border-[#FACC15] hover:text-[#FACC15]'
+                  }`}
               >
                 {category}
               </motion.button>
@@ -97,7 +132,7 @@ const Home = () => {
 
         {/* Products Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {[...Array(8)].map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -113,7 +148,7 @@ const Home = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {filteredProducts.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}

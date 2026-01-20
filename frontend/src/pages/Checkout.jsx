@@ -32,7 +32,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
@@ -44,10 +44,14 @@ const Checkout = () => {
       const orderData = {
         orderItems: cart.map((item) => ({
           product: item._id,
+          name: item.name,
+          price: item.price,
+          image: item.image,
           quantity: item.quantity,
         })),
         deliveryDetails,
         paymentMethod,
+        totalAmount: total,
       };
 
       console.log('Sending order data:', orderData);
@@ -55,7 +59,7 @@ const Checkout = () => {
 
       const response = await orderAPI.create(orderData);
       console.log('Order response:', response);
-      
+
       if (response.data.success) {
         setOrderSuccess(true);
         clearCart();
@@ -65,7 +69,7 @@ const Checkout = () => {
         const timer = setTimeout(() => {
           navigate('/orders', { replace: true });
         }, 3000);
-        
+
         return () => clearTimeout(timer);
       }
     } catch (error) {
@@ -75,7 +79,7 @@ const Checkout = () => {
         "STRINGIFIED DATA:",
         JSON.stringify(error.response?.data, null, 2)
       );
-      
+
       const errorData = error.response?.data;
       const errorMessage = errorData?.message || error.message || 'Order placement failed';
       toast.error(errorMessage);
@@ -119,11 +123,11 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-[#0A0A0A] transition-colors duration-300 text-white">
       <Navbar />
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-white mb-6">Checkout</h1>
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Checkout</h1>
 
-        <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="bg-[#161616] border border-[#262626] rounded-xl p-6 hover:bg-[#1F1F1F] transition-all">
               <h2 className="text-xl font-bold text-white mb-4">
                 Delivery Details

@@ -35,10 +35,10 @@ app.get('/api/health', (req, res) => {
 app.post('/api/test-order', async (req, res) => {
   console.log('Test order endpoint hit');
   console.log('Request body:', req.body);
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'Test endpoint working',
-    receivedData: req.body 
+    receivedData: req.body
   });
 });
 
@@ -55,7 +55,7 @@ app.use((err, req, res, next) => {
   console.error('Error caught by error handler:', err);
   const status = err.status || err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
-  
+
   res.status(status).json({
     success: false,
     message: message,

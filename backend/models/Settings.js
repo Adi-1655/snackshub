@@ -29,6 +29,10 @@ const settingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    isFreeDelivery: {
+      type: Boolean,
+      default: true,
+    },
     minOrderAmount: {
       type: Number,
       default: 0,

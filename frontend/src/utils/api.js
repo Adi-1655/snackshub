@@ -1,6 +1,14 @@
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const BASE_URL = API_URL.replace('/api', '');
+
+export const getImageUrl = (path) => {
+  if (!path) return '/placeholder-product.jpg';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${BASE_URL}${path}`;
+  return path;
+};
 
 const api = axios.create({
   baseURL: API_URL,
@@ -62,7 +70,17 @@ export const adminAPI = {
   updateProduct: (id, data) => api.put(`/admin/products/${id}`, data),
   deleteProduct: (id) => api.delete(`/admin/products/${id}`),
   getLowStockProducts: () => api.get('/admin/products/low-stock'),
+  getLowStockProducts: () => api.get('/admin/products/low-stock'),
   getSalesReport: (range) => api.get(`/admin/sales-report/${range}`),
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post('/admin/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 export default api;
