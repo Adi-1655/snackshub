@@ -94,9 +94,34 @@ const cancelOrder = async (req, res) => {
     }
 };
 
+const deleteOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id);
+
+        if (order) {
+            if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+                return res.status(401).json({ message: 'Not authorized' });
+            }
+
+            if (order.orderStatus !== 'Delivered' && order.orderStatus !== 'Cancelled') {
+                return res.status(400).json({ message: 'Cannot delete active order' });
+            }
+
+            await order.deleteOne();
+            res.json({ success: true, message: 'Order removed' });
+        } else {
+            res.status(404).json({ message: 'Order not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
     createOrder,
     getUserOrders,
     getOrder,
     cancelOrder,
+    deleteOrder,
 };

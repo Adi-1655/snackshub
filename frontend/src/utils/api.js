@@ -12,6 +12,7 @@ export const getImageUrl = (path) => {
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 15000, // 15 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,6 +53,7 @@ export const orderAPI = {
   getUserOrders: () => api.get('/orders'),
   getOne: (id) => api.get(`/orders/${id}`),
   cancel: (id, reason) => api.put(`/orders/${id}/cancel`, { reason }),
+  delete: (id) => api.delete(`/orders/${id}`),
 };
 
 // Settings endpoints

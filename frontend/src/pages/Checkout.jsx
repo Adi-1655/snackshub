@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { orderAPI } from '../utils/api';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
+import BackButton from '../components/BackButton';
 
 const Checkout = () => {
   const { cart, getCartTotal, clearCart } = useApp();
@@ -20,6 +21,17 @@ const Checkout = () => {
     roomNumber: user?.roomNumber || '',
     phone: user?.phone || '',
   });
+
+  useEffect(() => {
+    if (user) {
+      setDeliveryDetails(prev => ({
+        ...prev,
+        hostelName: prev.hostelName || user.hostelName || '',
+        roomNumber: prev.roomNumber || user.roomNumber || '',
+        phone: prev.phone || user.phone || '',
+      }));
+    }
+  }, [user]);
 
   useEffect(() => {
     // Redirect to cart if empty
@@ -124,6 +136,7 @@ const Checkout = () => {
     <div className="min-h-screen bg-[#0A0A0A] transition-colors duration-300 text-white">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
+        <BackButton to="/cart" label="Back to Cart" />
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Checkout</h1>
 
         <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4 sm:gap-6">

@@ -15,6 +15,18 @@ import {
   FiFileText,
   FiDownload,
 } from 'react-icons/fi';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 import { adminAPI, productAPI, settingsAPI, getImageUrl } from '../utils/api';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
@@ -59,11 +71,11 @@ const TimePicker = ({ label, value, onChange }) => {
   return (
     <div>
       <label className="block text-sm font-medium text-[#a1a1a6] mb-2">{label}</label>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <select
           value={hour}
           onChange={(e) => handleChange('hour', e.target.value)}
-          className="flex-1 px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+          className="flex-1 min-w-[60px] px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
         >
           {hours.map((h) => (
             <option key={h} value={h}>{h}</option>
@@ -73,7 +85,7 @@ const TimePicker = ({ label, value, onChange }) => {
         <select
           value={minute}
           onChange={(e) => handleChange('minute', e.target.value)}
-          className="flex-1 px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+          className="flex-1 min-w-[60px] px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
         >
           {minutes.map((m) => (
             <option key={m} value={m}>{m}</option>
@@ -82,7 +94,7 @@ const TimePicker = ({ label, value, onChange }) => {
         <select
           value={period}
           onChange={(e) => handleChange('period', e.target.value)}
-          className="flex-1 px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
+          className="flex-1 min-w-[60px] px-4 py-2 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
         >
           <option value="AM">AM</option>
           <option value="PM">PM</option>
@@ -121,22 +133,27 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    if (activeTab === 'reports') {
-      fetchReportData('daily');
+  }, []); // Initial load only
+
+  useEffect(() => {
+    // Poll for updates if on dashboard/orders tab
+    if (activeTab === 'dashboard' || activeTab === 'orders') {
+      const interval = setInterval(fetchData, 15000);
+      return () => clearInterval(interval);
     }
-  }, []);
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'reports') {
       fetchReportData(reportRange);
     }
-  }, [reportRange]);
+  }, [reportRange, activeTab]);
 
   const fetchData = async () => {
     try {
       const [statsRes, ordersRes, productsRes, settingsRes] = await Promise.all([
         adminAPI.getStats(),
-        adminAPI.getAllOrders({ limit: 10 }),
+        adminAPI.getAllOrders(),
         productAPI.getAll(),
         settingsAPI.get(),
       ]);
@@ -388,16 +405,22 @@ const AdminDashboard = () => {
         {activeTab === 'orders' && (
           <div>
             <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {['All', 'Pending', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'].map((status) => (
+              {['All', 'Pending', 'Delivered', 'Cancelled'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors border border-[#262626] ${statusFilter === status
+                  className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors border border-[#262626] flex items-center gap-2 ${statusFilter === status
                     ? 'bg-[#FACC15] text-black border-[#FACC15]'
                     : 'bg-[#161616] text-[#a1a1a6] hover:bg-[#1F1F1F] hover:text-white'
                     }`}
                 >
                   {status}
+                  {status === 'Pending' && stats?.pendingOrders > 0 && (
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${statusFilter === 'Pending' ? 'bg-black text-[#FACC15]' : 'bg-[#FACC15] text-black'
+                      }`}>
+                      {stats.pendingOrders}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -409,6 +432,9 @@ const AdminDashboard = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Order ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Products
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                         Customer
@@ -426,12 +452,25 @@ const AdminDashboard = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {orders
-                      .filter((order) => statusFilter === 'All' || order.orderStatus === statusFilter)
+                      .filter((order) => {
+                        if (statusFilter === 'All') return true;
+                        if (statusFilter === 'Pending') return order.orderStatus === 'Confirmed' || order.orderStatus === 'Accepted';
+                        return order.orderStatus === statusFilter;
+                      })
                       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                       .map((order) => (
                         <tr key={order._id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                             #{order._id.slice(-8)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-white max-w-xs">
+                            <div className="flex flex-col gap-1">
+                              {order.orderItems.map((item, idx) => (
+                                <span key={idx} className="text-[#a1a1a6]">
+                                  {item.name} <span className="text-[#FACC15]">x{item.quantity}</span>
+                                </span>
+                              ))}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                             {order.user?.name}
@@ -445,18 +484,51 @@ const AdminDashboard = () => {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <select
-                              value={order.orderStatus}
-                              onChange={(e) => updateOrderStatus(order._id, e.target.value)}
-                              className="px-3 py-1 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:border-[#FACC15]"
-                            >
-                              <option>Pending</option>
-                              <option>Confirmed</option>
-                              <option>Preparing</option>
-                              <option>Out for Delivery</option>
-                              <option>Delivered</option>
-                              <option>Cancelled</option>
-                            </select>
+                            <div className="flex gap-2">
+                              {order.orderStatus === 'Confirmed' && (
+                                <>
+                                  <button
+                                    onClick={() => updateOrderStatus(order._id, 'Accepted')}
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                  >
+                                    Accept
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm('Are you sure you want to cancel this order?')) {
+                                        updateOrderStatus(order._id, 'Cancelled');
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              )}
+                              {order.orderStatus === 'Accepted' && (
+                                <>
+                                  <button
+                                    onClick={() => updateOrderStatus(order._id, 'Delivered')}
+                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                  >
+                                    Delivered
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm('Are you sure you want to cancel this order?')) {
+                                        updateOrderStatus(order._id, 'Cancelled');
+                                      }
+                                    }}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              )}
+                              {(order.orderStatus === 'Delivered' || order.orderStatus === 'Cancelled') && (
+                                <span className="text-gray-500 text-sm">-</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -637,6 +709,62 @@ const AdminDashboard = () => {
                 )}
               </div>
 
+              <div className="pt-4 border-t border-[#262626]">
+                <h3 className="font-medium text-white mb-4">Offer Carousel Images</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+                  {settings.offerImages && settings.offerImages.map((img, index) => (
+                    <div key={index} className="relative group aspect-video bg-[#262626] rounded-lg overflow-hidden border border-[#262626]">
+                      <img src={getImageUrl(img)} alt={`Offer ${index}`} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => {
+                          const newImages = settings.offerImages.filter((_, i) => i !== index);
+                          setSettings({ ...settings, offerImages: newImages });
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove Image"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="flex flex-col items-center justify-center aspect-video border-2 border-dashed border-[#262626] rounded-lg hover:border-[#FACC15] hover:text-[#FACC15] text-[#a1a1a6] cursor-pointer transition-all">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        setUploading(true);
+                        try {
+                          const response = await adminAPI.uploadImage(file);
+                          if (response.data.success) {
+                            const newImages = [...(settings.offerImages || []), response.data.imageUrl];
+                            setSettings({ ...settings, offerImages: newImages });
+                            toast.success('Image uploaded');
+                          }
+                        } catch (error) {
+                          toast.error('Failed to upload image');
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                    />
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-[#FACC15]"></div>
+                    ) : (
+                      <>
+                        <FiPlus size={24} className="mb-2" />
+                        <span className="text-sm">Add Image</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+                <p className="text-xs text-[#a1a1a6]">
+                  Upload images to display in the auto-scrolling carousel on the home page.
+                </p>
+              </div>
+
               <button
                 onClick={() => updateSettings(settings)}
                 className="w-full py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-colors mt-6"
@@ -677,6 +805,66 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
+
+            {reportData && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Revenue Trend Graph */}
+                <div className="bg-[#161616] border border-[#262626] rounded-xl p-6 hover:bg-[#1F1F1F] transition-all">
+                  <h3 className="text-lg font-bold text-white mb-4">Revenue Trend</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={reportData.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                        <XAxis dataKey="name" stroke="#a1a1a6" tick={{ fill: '#a1a1a6' }} axisLine={{ stroke: '#333' }} tickLine={false} />
+                        <YAxis stroke="#a1a1a6" tick={{ fill: '#a1a1a6' }} axisLine={false} tickLine={false} tickFormatter={(value) => `₹${value}`} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #262626', color: '#fff', borderRadius: '8px' }}
+                          itemStyle={{ color: '#FACC15' }}
+                          formatter={(value) => [`₹${value}`, 'Revenue']}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                        <Line
+                          type="monotone"
+                          dataKey="revenue"
+                          name="Revenue"
+                          stroke="#FACC15"
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: '#0A0A0A', stroke: '#FACC15', strokeWidth: 2 }}
+                          activeDot={{ r: 6, fill: '#FACC15' }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Daily Orders Graph */}
+                <div className="bg-[#161616] border border-[#262626] rounded-xl p-6 hover:bg-[#1F1F1F] transition-all">
+                  <h3 className="text-lg font-bold text-white mb-4">Daily Orders</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={reportData.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                        <XAxis dataKey="name" stroke="#a1a1a6" tick={{ fill: '#a1a1a6' }} axisLine={{ stroke: '#333' }} tickLine={false} />
+                        <YAxis stroke="#a1a1a6" tick={{ fill: '#a1a1a6' }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #262626', color: '#fff', borderRadius: '8px' }}
+                          itemStyle={{ color: '#FACC15' }}
+                          cursor={{ fill: '#262626', opacity: 0.5 }}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                        <Bar
+                          dataKey="orders"
+                          name="Orders"
+                          fill="#FACC15"
+                          radius={[4, 4, 0, 0]}
+                          barSize={40}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {reportData && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { FiTrash2, FiMinus, FiPlus, FiShoppingBag } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import BackButton from '../components/BackButton';
 import Navbar from '../components/Navbar';
 
 const Cart = () => {
@@ -14,22 +15,25 @@ const Cart = () => {
     return (
       <div className="min-h-screen bg-[#0A0A0A]">
         <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
-            <div className="text-6xl mb-4">🛒</div>
-            <h2 className="text-2xl font-bold text-white mb-2">
-              Your cart is empty
-            </h2>
-            <p className="text-[#a1a1a6] mb-6">
-              Add some delicious snacks to get started!
-            </p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-all"
-            >
-              Browse Products
-            </button>
-          </motion.div>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <BackButton to="/" label="Back to Shop" />
+          <div className="text-center py-8">
+            <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
+              <div className="text-6xl mb-4">🛒</div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Your cart is empty
+              </h2>
+              <p className="text-[#a1a1a6] mb-6">
+                Add some delicious snacks to get started!
+              </p>
+              <button
+                onClick={() => navigate('/')}
+                className="px-6 py-3 bg-[#FACC15] text-black rounded-lg font-semibold hover:bg-[#f5c707] transition-all"
+              >
+                Browse Products
+              </button>
+            </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -39,6 +43,7 @@ const Cart = () => {
     <div className="min-h-screen bg-[#0A0A0A]">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
+        <BackButton to="/" label="Back to Shop" />
         <h1 className="text-3xl font-bold text-white mb-6">Shopping Cart</h1>
 
         <div className="space-y-4">

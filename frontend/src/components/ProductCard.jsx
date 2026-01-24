@@ -17,10 +17,9 @@ const ProductCard = ({ product }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8 }}
-      className="bg-[#161616] border border-[#262626] rounded-xl overflow-hidden transition-all duration-300 hover:bg-[#1F1F1F] hover:border-[#FACC15] hover:shadow-2xl hover:shadow-yellow-500/10"
+      whileHover={{ y: -5, scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className="bg-[var(--bg-component)] border border-[var(--border-color)] rounded-xl overflow-hidden transition-colors duration-300 hover:border-[#FACC15] hover:shadow-2xl hover:shadow-yellow-500/10"
       style={{ fontFamily: 'system-ui, -apple-system, Inter, sans-serif' }}
     >
       <div className="relative">
@@ -31,7 +30,7 @@ const ProductCard = ({ product }) => {
         />
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-            <span className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">
+            <span className="bg-red-600 text-[var(--text-primary)] px-4 py-2 rounded-lg font-semibold text-sm">
               Out of Stock
             </span>
           </div>
@@ -47,23 +46,23 @@ const ProductCard = ({ product }) => {
 
       <div className="p-3 sm:p-6">
         <div className="mb-2 sm:mb-3">
-          <span className="text-[10px] sm:text-xs font-semibold text-[#71717A] uppercase tracking-wider">
+          <span className="text-[10px] sm:text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
             {product.category}
           </span>
         </div>
 
-        <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2 line-clamp-2">
+        <h3 className="text-sm sm:text-lg font-semibold text-[var(--text-primary)] mb-1 sm:mb-2 line-clamp-2">
           {product.name}
         </h3>
 
         {product.brand && (
-          <p className="text-xs sm:text-sm text-[#71717A] mb-2 sm:mb-3">
+          <p className="text-xs sm:text-sm text-[var(--text-muted)] mb-2 sm:mb-3">
             {product.brand} {product.weight && `• ${product.weight}`}
           </p>
         )}
 
         {product.description && (
-          <p className="hidden sm:block text-sm text-[#a1a1a6] mb-4 line-clamp-2">
+          <p className="hidden sm:block text-sm text-[var(--text-secondary)] mb-4 line-clamp-2">
             {product.description}
           </p>
         )}
@@ -72,7 +71,7 @@ const ProductCard = ({ product }) => {
           <span className="text-lg sm:text-2xl font-bold text-[#FACC15]">
             ₹{product.price}
           </span>
-          <span className="text-[10px] sm:text-xs text-[#71717A]">
+          <span className="text-[10px] sm:text-xs text-[var(--text-muted)]">
             {product.stock} in stock
           </span>
         </div>
@@ -81,20 +80,20 @@ const ProductCard = ({ product }) => {
           {settings?.isFreeDelivery ? (
             <p className="text-[10px] sm:text-xs text-green-500 font-medium">Free Delivery</p>
           ) : (
-            <p className="text-[10px] sm:text-xs text-[#a1a1a6]">+ ₹{settings?.deliveryCharge || 0} Delivery</p>
+            <p className="text-[10px] sm:text-xs text-[var(--text-secondary)]">+ ₹{settings?.deliveryCharge || 0} Delivery</p>
           )}
         </div>
 
         <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3">
           {user?.role === 'admin' ? (
             <div className="col-span-2 bg-[#27272A] rounded-lg p-3 text-center">
-              <p className="text-[#a1a1a6] text-sm mb-1">Current Stock</p>
+              <p className="text-[var(--text-secondary)] text-sm mb-1">Current Stock</p>
               <p className={`text-2xl font-bold ${product.stock <= 5 ? 'text-red-500' : 'text-[#FACC15]'}`}>
                 {product.stock}
               </p>
             </div>
           ) : cartItem ? (
-            <div className="flex items-center justify-between bg-[#161616] rounded-lg p-2 sm:p-3 gap-2 border border-[#262626] sm:col-span-2">
+            <div className="flex items-center justify-between bg-[var(--bg-component)] rounded-lg p-2 sm:p-3 gap-2 border border-[var(--border-color)] sm:col-span-2">
               <button
                 onClick={() => {
                   if (cartItem.quantity > 1) {
@@ -103,17 +102,17 @@ const ProductCard = ({ product }) => {
                     removeFromCart(product._id);
                   }
                 }}
-                className="p-1 sm:p-2 bg-[#27272A] text-white rounded-lg hover:bg-[#3f3f46] transition-colors duration-200"
+                className="p-1 sm:p-2 bg-[#27272A] text-[var(--text-primary)] rounded-lg hover:bg-[#3f3f46] transition-colors duration-200"
               >
                 <FiMinus size={14} />
               </button>
-              <span className="font-semibold text-white text-sm sm:text-lg flex-1 text-center">
+              <span className="font-semibold text-[var(--text-primary)] text-sm sm:text-lg flex-1 text-center">
                 {cartItem.quantity}
               </span>
               <button
                 onClick={() => updateCartQuantity(product._id, cartItem.quantity + 1)}
                 disabled={cartItem.quantity >= product.maxQuantityPerOrder}
-                className="p-1 sm:p-2 bg-[#27272A] text-white rounded-lg hover:bg-[#3f3f46] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1 sm:p-2 bg-[#27272A] text-[var(--text-primary)] rounded-lg hover:bg-[#3f3f46] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiPlus size={14} />
               </button>
@@ -124,8 +123,8 @@ const ProductCard = ({ product }) => {
                 onClick={() => addToCart(product)}
                 disabled={isDisabled}
                 className={`py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 ${isDisabled
-                  ? 'bg-[#27272A] text-[#71717A] cursor-not-allowed sm:col-span-2'
-                  : 'bg-[#161616] text-white border border-[#FACC15] hover:bg-[#27272A]'
+                  ? 'bg-[#27272A] text-[var(--text-muted)] cursor-not-allowed sm:col-span-2'
+                  : 'bg-[var(--bg-component)] text-[var(--text-primary)] border border-[#FACC15] hover:bg-[#27272A]'
                   }`}
               >
                 <FiShoppingCart size={16} />

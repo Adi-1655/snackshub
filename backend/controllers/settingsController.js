@@ -32,6 +32,7 @@ const updateSettings = async (req, res) => {
             maintenanceMode,
             maintenanceMessage,
             isFreeDelivery,
+            offerImages,
         } = req.body;
 
         let settings = await Settings.findOne();
@@ -45,6 +46,7 @@ const updateSettings = async (req, res) => {
             settings.maintenanceMode = maintenanceMode !== undefined ? maintenanceMode : settings.maintenanceMode;
             settings.maintenanceMessage = maintenanceMessage || settings.maintenanceMessage;
             settings.isFreeDelivery = isFreeDelivery !== undefined ? isFreeDelivery : settings.isFreeDelivery;
+            settings.offerImages = offerImages || settings.offerImages;
 
             const updatedSettings = await settings.save();
             res.json({ success: true, data: updatedSettings });
@@ -58,6 +60,7 @@ const updateSettings = async (req, res) => {
                 maintenanceMode,
                 maintenanceMessage,
                 isFreeDelivery,
+                offerImages,
             });
             const createdSettings = await settings.save();
             res.json({ success: true, data: createdSettings });

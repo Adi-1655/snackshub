@@ -1,7 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  /* Monochrome Charcoal Palette */
+  /* Light Mode Palette (Default) */
+  --bg-base: #FFFFFF;
+  --bg-component: #F3F4F6;
+  --bg-hover: #E5E7EB;
+  --border-color: #D1D5DB;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+  --accent-primary: #FACC15;
+  --accent-hover: #EAB308;
+}
+
+.dark {
+  /* Dark Mode Palette */
   --bg-base: #0A0A0A;
   --bg-component: #161616;
   --bg-hover: #1F1F1F;

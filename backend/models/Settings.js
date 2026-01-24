@@ -50,6 +50,10 @@ const settingsSchema = new mongoose.Schema(
       type: String,
       default: 'We are currently under maintenance. Please check back later.',
     },
+    offerImages: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

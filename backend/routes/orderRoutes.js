@@ -22,4 +22,7 @@ router.get('/:id', protect, getOrder);
 // Cancel an order
 router.put('/:id/cancel', protect, cancelOrder);
 
+// Delete an order
+router.delete('/:id', protect, require('../controllers/orderController').deleteOrder);
+
 module.exports = router;

@@ -52,8 +52,8 @@ const orderSchema = new mongoose.Schema(
     },
     orderStatus: {
       type: String,
-      enum: ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered', 'Cancelled'],
-      default: 'Pending',
+      enum: ['Confirmed', 'Accepted', 'Delivered', 'Cancelled'],
+      default: 'Confirmed',
     },
     isCancellable: {
       type: Boolean,
@@ -79,7 +79,7 @@ const orderSchema = new mongoose.Schema(
 
 // Auto-update isCancellable based on order status
 orderSchema.pre('save', function () {
-  if (this.orderStatus === 'Preparing' || this.orderStatus === 'Out for Delivery' || this.orderStatus === 'Delivered') {
+  if (this.orderStatus === 'Accepted' || this.orderStatus === 'Delivered') {
     this.isCancellable = false;
   }
 });

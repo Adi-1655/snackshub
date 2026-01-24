@@ -23,18 +23,23 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem('token');
+
     if (token) {
       try {
         const { data } = await authAPI.getMe();
         setUser(data.data);
         setIsAuthenticated(true);
       } catch (error) {
+        console.error('Auth verification failed:', error);
         localStorage.removeItem('token');
         setUser(null);
         setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const login = async (credentials) => {

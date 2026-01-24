@@ -44,7 +44,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -58,8 +58,8 @@ const Login = () => {
           >
             🍿
           </motion.h1>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">SnackHub</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <h2 className="text-3xl font-bold text-white">SnackHub</h2>
+          <p className="text-[#a1a1a6] mt-2">
             Your hostel snacks, delivered!
           </p>
         </div>
@@ -67,26 +67,24 @@ const Login = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
+          className="bg-[#161616] border border-[#262626] rounded-2xl shadow-xl p-8"
         >
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setIsLogin(true)}
-              className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                isLogin
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-              }`}
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all ${isLogin
+                  ? 'bg-[#FACC15] text-black shadow-md'
+                  : 'bg-[#0A0A0A] border border-[#262626] text-[#a1a1a6] hover:text-white'
+                }`}
             >
               Login
             </button>
             <button
               onClick={() => setIsLogin(false)}
-              className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                !isLogin
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-              }`}
+              className={`flex-1 py-3 rounded-lg font-semibold transition-all ${!isLogin
+                  ? 'bg-[#FACC15] text-black shadow-md'
+                  : 'bg-[#0A0A0A] border border-[#262626] text-[#a1a1a6] hover:text-white'
+                }`}
             >
               Register
             </button>
@@ -95,18 +93,18 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
                   Full Name
                 </label>
                 <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FiUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a1a1a6]" />
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
                     required={!isLogin}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    className="w-full pl-10 pr-4 py-3 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:outline-none focus:border-[#FACC15] placeholder-gray-600"
                     placeholder="Enter your name"
                   />
                 </div>
@@ -114,11 +112,11 @@ const Login = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
                 Phone Number
               </label>
               <div className="relative">
-                <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a1a1a6]" />
                 <input
                   type="tel"
                   name="phone"
@@ -127,7 +125,7 @@ const Login = () => {
                   required
                   maxLength="10"
                   pattern="[0-9]{10}"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full pl-10 pr-4 py-3 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:outline-none focus:border-[#FACC15] placeholder-gray-600"
                   placeholder="10-digit mobile number"
                 />
               </div>
@@ -136,54 +134,54 @@ const Login = () => {
             {!isLogin && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
                     Hostel ID
                   </label>
                   <div className="relative">
-                    <FiHash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FiHash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a1a1a6]" />
                     <input
                       type="text"
                       name="hostelId"
                       value={formData.hostelId}
                       onChange={handleChange}
                       required={!isLogin}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      className="w-full pl-10 pr-4 py-3 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:outline-none focus:border-[#FACC15] placeholder-gray-600"
                       placeholder="e.g., HST001"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
                     Hostel Name
                   </label>
                   <div className="relative">
-                    <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FiHome className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a1a1a6]" />
                     <input
                       type="text"
                       name="hostelName"
                       value={formData.hostelName}
                       onChange={handleChange}
                       required={!isLogin}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      className="w-full pl-10 pr-4 py-3 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:outline-none focus:border-[#FACC15] placeholder-gray-600"
                       placeholder="e.g., Boys Hostel A"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
                     Room Number
                   </label>
                   <div className="relative">
-                    <FiHash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FiHash className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a1a1a6]" />
                     <input
                       type="text"
                       name="roomNumber"
                       value={formData.roomNumber}
                       onChange={handleChange}
                       required={!isLogin}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      className="w-full pl-10 pr-4 py-3 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:outline-none focus:border-[#FACC15] placeholder-gray-600"
                       placeholder="e.g., 101"
                     />
                   </div>
@@ -192,11 +190,11 @@ const Login = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-[#a1a1a6] mb-2">
                 Password
               </label>
               <div className="relative">
-                <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#a1a1a6]" />
                 <input
                   type="password"
                   name="password"
@@ -204,7 +202,7 @@ const Login = () => {
                   onChange={handleChange}
                   required
                   minLength="6"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-full pl-10 pr-4 py-3 border border-[#262626] rounded-lg bg-[#0A0A0A] text-white focus:outline-none focus:border-[#FACC15] placeholder-gray-600"
                   placeholder="Enter password (min 6 characters)"
                 />
               </div>
@@ -215,11 +213,11 @@ const Login = () => {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-[#FACC15] hover:bg-[#d4ac0d] text-black font-bold rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-black"></div>
                   Processing...
                 </span>
               ) : isLogin ? (
@@ -230,10 +228,10 @@ const Login = () => {
             </motion.button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <div className="mt-6 text-center text-sm text-[#a1a1a6]">
             <p>
               Demo Login: <br />
-              <span className="font-mono">
+              <span className="font-mono text-[#FACC15]">
                 Phone: 9876543210 | Pass: password123
               </span>
             </p>

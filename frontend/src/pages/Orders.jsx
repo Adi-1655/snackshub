@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiPackage, FiClock, FiTruck, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiPackage, FiClock, FiTruck, FiCheckCircle, FiXCircle, FiTrash2 } from 'react-icons/fi';
 import { orderAPI, adminAPI } from '../utils/api';
 import Navbar from '../components/Navbar';
+import BackButton from '../components/BackButton';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
-const ORDER_STEPS = ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery', 'Delivered'];
+const ORDER_STEPS = ['Confirmed', 'Accepted', 'Delivered'];
 
 const OrderTracker = ({ currentStatus }) => {
   if (currentStatus === 'Cancelled') {
@@ -64,10 +65,17 @@ const Orders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [expandedOrders, setExpandedOrders] = useState(new Set());
+  const [expandedItems, setExpandedItems] = useState(new Set());
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     fetchOrders();
+
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const fetchOrders = async () => {
@@ -76,12 +84,22 @@ const Orders = () => {
         const { data } = await adminAPI.getAllOrders();
         // Filter only pending orders for admin view
         const pendingOrders = data.data
-          .filter(order => order.orderStatus === 'Pending')
+          .filter(order => ['Confirmed', 'Accepted'].includes(order.orderStatus))
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setOrders(pendingOrders);
       } else {
         const { data } = await orderAPI.getUserOrders();
-        setOrders(data.data);
+        // Sort: Active orders first, then by date
+        const sortedOrders = data.data.sort((a, b) => {
+          const activeStatuses = ['Confirmed', 'Accepted'];
+          const aActive = activeStatuses.includes(a.orderStatus);
+          const bActive = activeStatuses.includes(b.orderStatus);
+
+          if (aActive && !bActive) return -1;
+          if (!aActive && bActive) return 1;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        setOrders(sortedOrders);
       }
     } catch (error) {
       toast.error('Failed to fetch orders');
@@ -102,6 +120,18 @@ const Orders = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to delete this order history?')) return;
+
+    try {
+      await orderAPI.delete(orderId);
+      toast.success('Order deleted successfully');
+      fetchOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete order');
+    }
+  };
+
   const toggleTracking = (orderId) => {
     const newExpanded = new Set(expandedOrders);
     if (newExpanded.has(orderId)) {
@@ -112,15 +142,22 @@ const Orders = () => {
     setExpandedOrders(newExpanded);
   };
 
+  const toggleItems = (orderId) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(orderId)) {
+      newExpanded.delete(orderId);
+    } else {
+      newExpanded.add(orderId);
+    }
+    setExpandedItems(newExpanded);
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'Pending':
-        return <FiClock className="text-yellow-500" />;
       case 'Confirmed':
-      case 'Preparing':
+        return <FiClock className="text-yellow-500" />;
+      case 'Accepted':
         return <FiPackage className="text-blue-500" />;
-      case 'Out for Delivery':
-        return <FiTruck className="text-purple-500" />;
       case 'Delivered':
         return <FiCheckCircle className="text-green-500" />;
       case 'Cancelled':
@@ -132,13 +169,10 @@ const Orders = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Pending':
-        return 'bg-[#FACC15]/20 text-[#FACC15]';
       case 'Confirmed':
-      case 'Preparing':
+        return 'bg-[#FACC15]/20 text-[#FACC15]';
+      case 'Accepted':
         return 'bg-blue-500/20 text-blue-400';
-      case 'Out for Delivery':
-        return 'bg-purple-500/20 text-purple-400';
       case 'Delivered':
         return 'bg-green-500/20 text-green-400';
       case 'Cancelled':
@@ -163,6 +197,7 @@ const Orders = () => {
     <div className="min-h-screen bg-[#0A0A0A]">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
+        <BackButton to="/" label="Back to Shop" />
         <h1 className="text-3xl font-bold text-white mb-6">
           {user?.role === 'admin' ? 'Pending Orders' : 'My Orders'}
         </h1>
@@ -178,13 +213,35 @@ const Orders = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {orders.map((order, index) => (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1
+                }
+              }
+            }}
+            className="space-y-4"
+          >
+            {(user?.role === 'admin' && !showAll && orders.length > 2 ? orders.slice(0, 2) : orders).map((order) => (
               <motion.div
                 key={order._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: {
+                    opacity: 1,
+                    y: 0,
+                    transition: {
+                      type: 'spring',
+                      stiffness: 300,
+                      damping: 24
+                    }
+                  }
+                }}
                 onClick={() => {
                   if (user?.role === 'admin') {
                     navigate('/admin', { state: { activeTab: 'orders' } });
@@ -238,7 +295,7 @@ const Orders = () => {
                   )}
 
                   <div className="space-y-2 mb-4">
-                    {order.orderItems.map((item) => (
+                    {(expandedItems.has(order._id) ? order.orderItems : order.orderItems.slice(0, 2)).map((item) => (
                       <div
                         key={item._id}
                         className="flex justify-between text-sm text-[#a1a1a6]"
@@ -249,6 +306,17 @@ const Orders = () => {
                         <span className="font-semibold">₹{item.price * item.quantity}</span>
                       </div>
                     ))}
+                    {order.orderItems.length > 2 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleItems(order._id);
+                        }}
+                        className="text-xs text-[#FACC15] hover:underline mt-2 flex items-center gap-1"
+                      >
+                        {expandedItems.has(order._id) ? 'Show Less' : `+${order.orderItems.length - 2} more items`}
+                      </button>
+                    )}
                   </div>
 
                   <div className="border-t border-[#262626] pt-4 flex justify-between items-center">
@@ -258,12 +326,26 @@ const Orders = () => {
                         ₹{order.totalAmount}
                       </p>
                     </div>
-                    {order.isCancellable && order.orderStatus === 'Pending' && (
+                    {order.isCancellable && order.orderStatus === 'Confirmed' && (
                       <button
                         onClick={() => handleCancelOrder(order._id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        className="p-2 bg-red-600/10 text-red-500 rounded-lg hover:bg-red-600/20 transition-colors"
+                        title="Cancel Order"
                       >
-                        Cancel Order
+                        <FiTrash2 size={18} />
+                      </button>
+
+                    )}
+                    {['Delivered', 'Cancelled'].includes(order.orderStatus) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteOrder(order._id);
+                        }}
+                        className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
+                        title="Delete Order History"
+                      >
+                        <FiTrash2 size={18} />
                       </button>
                     )}
                   </div>
@@ -282,10 +364,26 @@ const Orders = () => {
                 </div>
               </motion.div>
             ))}
-          </div>
+
+
+            {user?.role === 'admin' && orders.length > 2 && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => setShowAll(!showAll)}
+                  className="px-6 py-2 bg-[#262626] text-white rounded-full hover:bg-[#333] transition-colors font-medium text-sm flex items-center gap-2 border border-[#404040]"
+                >
+                  {showAll ? (
+                    <>Show Less <span className="text-xs">↑</span></>
+                  ) : (
+                    <>See All ({orders.length - 2} more) <span className="text-xs">↓</span></>
+                  )}
+                </button>
+              </div>
+            )}
+          </motion.div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 
